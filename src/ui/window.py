@@ -1,5 +1,6 @@
 import sys
 from datetime import datetime
+from src.notifications.sound_alert import play_alert_sound
 
 from PySide6.QtWidgets import (
     QApplication,
@@ -18,6 +19,7 @@ from PySide6.QtGui import QColor
 
 from src.transcription.worker import AudioWorker
 from src.ui.settings_dialog import SettingsDialog
+from src.ui.alert_popup import AlertPopup
 
 
 class PingMeWindow(QMainWindow):
@@ -29,10 +31,12 @@ class PingMeWindow(QMainWindow):
         self.setMinimumSize(800, 550)
 
         self.worker = None
+        self.active_popups = []
 
         self.setup_ui()
 
     def setup_ui(self):
+
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
 
@@ -118,6 +122,7 @@ class PingMeWindow(QMainWindow):
         main_layout.addWidget(self.empty_label)
 
         self.alert_list = QListWidget()
+
         self.alert_list.setStyleSheet("""
             QListWidget {
                 background-color: transparent;
@@ -136,8 +141,9 @@ class PingMeWindow(QMainWindow):
         self.alert_list.hide()
         main_layout.addWidget(self.alert_list)
 
-    # Open settings dialog
+    # Open settings
     def open_settings(self):
+
         dialog = SettingsDialog(self)
         dialog.exec()
 
@@ -164,10 +170,21 @@ class PingMeWindow(QMainWindow):
 
         self.worker = AudioWorker()
 
-        self.worker.status_changed.connect(self.update_status)
-        self.worker.alert_detected.connect(self.add_alert)
-        self.worker.error_occurred.connect(self.show_error)
-        self.worker.finished.connect(self.on_worker_finished)
+        self.worker.status_changed.connect(
+            self.update_status
+        )
+
+        self.worker.alert_detected.connect(
+            self.add_alert
+        )
+
+        self.worker.error_occurred.connect(
+            self.show_error
+        )
+
+        self.worker.finished.connect(
+            self.on_worker_finished
+        )
 
         self.worker.start()
 
@@ -183,16 +200,19 @@ class PingMeWindow(QMainWindow):
         )
 
         self.toggle_button.setEnabled(False)
+
         self.worker.stop()
 
-    # Update status
+    # Update listening status
     def update_status(self, status):
 
         if status == "Loading Whisper model...":
+
             self.status_label.setText("● Loading Model")
             self.description_label.setText(status)
 
         elif status == "Listening to system audio...":
+
             self.status_label.setText("● Listening")
             self.status_label.setStyleSheet(
                 "font-size: 20px; font-weight: bold; color: green;"
@@ -206,16 +226,18 @@ class PingMeWindow(QMainWindow):
             self.toggle_button.setEnabled(True)
 
         elif status == "Stopped":
+
             self.status_label.setText("● Not Listening")
             self.status_label.setStyleSheet(
                 "font-size: 20px; font-weight: bold; color: gray;"
             )
 
-    # Add alert to history
+    # Handle detected alerts
     def add_alert(self, alert_type, transcript):
 
         timestamp = datetime.now().strftime("%I:%M:%S %p")
 
+        # Add to temporary alert feed
         item = QListWidgetItem(
             f"🔔  {alert_type}                         {timestamp}\n"
             f"      {transcript}"
@@ -228,13 +250,29 @@ class PingMeWindow(QMainWindow):
 
         self.alert_list.insertItem(0, item)
 
+        # Keep maximum 50 temporary alerts
         while self.alert_list.count() > 50:
-            self.alert_list.takeItem(self.alert_list.count() - 1)
+            self.alert_list.takeItem(
+                self.alert_list.count() - 1
+            )
 
         self.empty_label.hide()
         self.alert_list.show()
 
-    # Show errors
+        # Create floating alert popup
+        popup = AlertPopup(alert_type, transcript)
+
+        self.active_popups.append(popup)
+
+        popup.destroyed.connect(
+            lambda: self.active_popups.remove(popup)
+            if popup in self.active_popups else None
+        )
+
+        popup.show_popup()
+        play_alert_sound(alert_type)
+
+    # Handle errors
     def show_error(self, error):
 
         self.status_label.setText("● Error")
@@ -251,6 +289,7 @@ class PingMeWindow(QMainWindow):
         self.toggle_button.setEnabled(True)
 
         if self.status_label.text() != "● Error":
+
             self.status_label.setText("● Not Listening")
             self.status_label.setStyleSheet(
                 "font-size: 20px; font-weight: bold; color: gray;"
@@ -259,6 +298,19 @@ class PingMeWindow(QMainWindow):
             self.description_label.setText(
                 "PingMe is currently inactive."
             )
+
+    # Clean shutdown
+    def closeEvent(self, event):
+
+        if self.worker is not None and self.worker.isRunning():
+
+            self.worker.stop()
+            self.worker.wait()
+
+        for popup in self.active_popups:
+            popup.close()
+
+        event.accept()
 
 
 def run_app():
