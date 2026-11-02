@@ -28,8 +28,11 @@ dist/
 # PyInstaller
 __pyinstaller/
 
-# Built installers
-installer/*.exe
+# Build outputs
+build/
+dist/
+installer/
+*.spec
 
 # Application settings and user data
 settings.json
