@@ -1,0 +1,54 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+
+# Virtual environment
+.venv/
+venv/
+env/
+
+# Environment variables
+.env
+.env.*
+
+# IDE and editor
+.vscode/
+.idea/
+*.swp
+
+# Python packaging
+build/
+dist/
+*.spec
+*.egg-info/
+
+# PyInstaller
+__pyinstaller/
+
+# Built installers
+installer/*.exe
+
+# Application settings and user data
+settings.json
+
+# Logs and temporary files
+*.log
+logs/
+temp/
+tmp/
+
+# Test artifacts
+.pytest_cache/
+.coverage
+htmlcov/
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Local audio/test files
+test_audio.wav

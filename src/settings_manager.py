@@ -1,8 +1,15 @@
+import sys
 import json
 from pathlib import Path
+import os
 
+if getattr(sys, "frozen", False):
+    SETTINGS_DIR = Path(os.getenv("APPDATA")) / "PingMe"
+else:
+    SETTINGS_DIR = Path(__file__).resolve().parent.parent
 
-SETTINGS_FILE = Path(__file__).resolve().parent.parent / "settings.json"
+SETTINGS_FILE = SETTINGS_DIR / "settings.json"
+SETTINGS_DIR.mkdir(parents=True, exist_ok=True)
 
 DEFAULT_SETTINGS = {
     "user_name": "Rushikesh",
